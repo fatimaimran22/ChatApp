@@ -22,6 +22,7 @@ def receive(client):
                 break
 
             print(message)
+            print("->", end="", flush=True)
 
     except (ConnectionResetError, ConnectionAbortedError, OSError):
         print("Connection lost.")
@@ -62,7 +63,7 @@ def main():
         client.sendall(username)
         print("Username sent.")
 
-        thread=Thread(target=receive, args=(client,), daemon=True) #This prevents the receive thread from keeping the program alive if the main thread exits.
+        thread=Thread(target=receive, args=(client,), daemon=True)
         thread.start()
         
         send_message(client)
