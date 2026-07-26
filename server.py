@@ -1,66 +1,114 @@
 import socket
-from threading import Thread
+from threading import Thread, Lock
 from config import HOST, PORT, BUFFER_SIZE
+import time
 
-clients={}
+class Server:
+    def __init__(self):
+        self.host = HOST
+        self.port = PORT
+        self.clients = {}
+        self.server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        self.lock = Lock()
 
-def handle_client(client_socket):
-    username=(client_socket.recv(BUFFER_SIZE)).decode()
-    print(f"*{username} has joined the chat*")
-    clients[username]=client_socket
-    try:
-        while True:
-            message=(client_socket.recv(BUFFER_SIZE)).decode()
-            if not message:
-                break
-            else:
-                #print(f"{username}: {message}")
-                message=f"{username}: {message}"
-                print(message)
-                broadcast_message(username,message)
-    except ConnectionResetError as e:
-        print(f"{username} connection lost!")
-    finally:
-        client_socket.close()
-        print(f"*{username} has left the chat*")
-        clients.pop(username, None)
-        
-        
-def broadcast_message(username,msg):
-    for user,client in list(clients.items()):
+    def start(self):
+        self.server.bind((self.host, self.port))
+        self.server.listen()
+        print("-----Welcome to Chat Room-----")
+
+    def accept_clients(self):
         try:
-            if username != user:
-                client.sendall(msg.encode())
-        except OSError:
-            clients.pop(user, None)
-            client.close()
+            while True:
+                client_socket, client_address = self.server.accept()
+                client_socket.settimeout(30)
+                thread = Thread(target=self.handle_client, args=(client_socket,), daemon=True)
+                thread.start()
+        except KeyboardInterrupt as e:
+            print("\nServer is Shutting Down.")
+        finally:
+            self.server_shutdown()
 
-def main():
-    server = socket.socket(socket.AF_INET,socket.SOCK_STREAM)
-    server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-    server.bind((HOST,PORT))
-    server.listen()
-    print("----Welcome to Chat App----")
-    #print(f"Server is listening on {HOST}:{PORT}")
-    threads=[]
-    try:
+    def handle_client_username(self, client_socket):
         while True:
-            client_socket, client_address = server.accept()
-            #print(f"Connection from {client_address}")
-            thread=Thread(target=handle_client, args=(client_socket,), daemon=True)
-            thread.start()
-            threads.append(thread)
+            try:
+                user = client_socket.recv(BUFFER_SIZE).decode().strip()
+            except (socket.timeout, ConnectionResetError, ConnectionAbortedError, OSError):
+                client_socket.close()
+                return None
+
+            if not user:
+                client_socket.close()
+                return None
+
+            with self.lock:
+                if user in self.clients:
+                    client_socket.sendall("Username already taken.".encode())
+                    continue
             
-    except KeyboardInterrupt as e:
-        print("\nServer is Shutting down.")
+                self.clients[user] = client_socket
 
-    finally:
-        #print("Finally block")
+            client_socket.sendall("OK".encode())
+            return user
 
-        for user, client in list(clients.items()):
-            client.close()
+    def handle_client(self,client_socket):
+        user = self.handle_client_username(client_socket)
+        if not user:
+            return
+        print(f"*{user} has joined the chat*")
+        self.broadcast(user,f" joined the chat")
 
-        server.close()
+        try:
+            while True:
+                message = (client_socket.recv(BUFFER_SIZE)).decode()
+                if not message:
+                    break
+                print(f"{user}:{message}")
+                self.broadcast(user,message)
+        except (ConnectionResetError, ConnectionAbortedError) as e:
+            print(f"{user} connection lost!: {e}")
+        except socket.timeout:
+            print(f"{user} was inactive for 30 seconds.")
+        finally:
+            self.remove_client(client_socket, user)
 
-if __name__=="__main__":
-    main()
+    def broadcast(self, user, msg):
+        with self.lock:
+            clients = list(self.clients.items())
+        for username, client in clients:
+            try:
+                if username != user:
+                    client.sendall((f"{user}:{msg}").encode())
+            except (ConnectionError, OSError) as e:
+                self.remove_client(client, username)
+
+    def remove_client(self, client_socket, user):
+        with self.lock:
+            existed = self.clients.pop(user, None)
+
+        if existed is not None:
+            print(f"*{user} has left the chat*")
+            self.broadcast(user,f" left the chat")
+
+        client_socket.close()
+
+    
+    def server_shutdown(self):
+        with self.lock:
+            clients = list(self.clients.items())
+        for user, client in clients:
+            self.remove_client(client, user)
+        self.server.close()
+
+    def run(self):
+        try:
+            self.start()
+            self.accept_clients()
+        except OSError as e:
+            print(f"Failed to start server: {e}")
+        finally:
+            self.server.close()
+
+if __name__ == "__main__":
+    server = Server()
+    server.run()
