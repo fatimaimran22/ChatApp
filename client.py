@@ -58,10 +58,16 @@ def main():
 
     try:
         client=connect()
+        while True:
+            username = input("Enter username: ").strip()
+            if username:
+                break
+            print("Username cannot be empty.")
 
-        username = (input('Enter Username: ')).encode()
-        client.sendall(username)
-        print("Username sent.")
+        client.sendall(username.encode())
+        # username = (input('Enter Username: ')).encode()
+        # client.sendall(username)
+        # print("Username sent.")
 
         thread=Thread(target=receive, args=(client,), daemon=True)
         thread.start()
