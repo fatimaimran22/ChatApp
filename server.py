@@ -32,11 +32,9 @@ class Server:
             try:
                 user = client_socket.recv(BUFFER_SIZE).decode().strip()
             except (socket.timeout, ConnectionAbortedError, ConnectionAbortedError, OSError):
-                client_socket.close()
                 return None
 
             if not user:
-                client_socket.close()
                 return 0
 
             with self.lock:
