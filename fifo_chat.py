@@ -1,16 +1,16 @@
 import os
 from threading import Thread
+import sys
 from config import FIFO_AB, FIFO_BA
-
-
-# Process  Read FIFO  Write FIFO 
-# A         fifo_ba    fifo_ab   
-# B         fifo_ab    fifo_ba   
-
+import time
 
 class FifoChat:
     def __init__(self, role):
         self.role = role.upper()
+        self.read_fifo = None
+        self.write_fifo = None
+        self.reader = None
+        self.writer = None
 
 
     def create_fifos(self):
@@ -29,13 +29,74 @@ class FifoChat:
         else:
             raise ValueError("Role must be A or B")
 
+    def open_fifos(self):
+        if self.role == 'A':
+            self.writer = open(self.write_fifo, "w")
+            self.reader = open(self.read_fifo, "r")
+        else:
+            self.reader = open(self.read_fifo, "r")
+            self.writer = open(self.write_fifo, "w")
+
+    def receive_messages(self):
+        try:
+            while True:
+                message = self.reader.readline()
+
+                if not message:
+                    print("Other User Disconnected.")
+                    break
+
+                print(message, end="")
+                print("->", end="", flush=True)
+                
+        except Exception as e:
+            print(e)
+
+    def send_messages(self):
+        try:
+            while True:
+                message = input("->")
+                self.writer.write(f"{role}: {message}\n")
+                self.writer.flush()
+        except KeyboardInterrupt:
+            print(f"\n Exiting Process: {self.role}")
+            self.cleanup()
+            sys.exit(0)
+
+
+    def cleanup(self):
+        if self.reader:
+            self.reader.close()
+        if self.writer:
+            self.writer.close()
+
+    def start_receiver(self):
+        receiver_thread = Thread(target=self.receive_messages, daemon= True)
+        receiver_thread.start()
+    
+
     def run(self):
-        self.create_fifos()
-        print("Reading from:", self.read_fifo)
-        print("Writing to:", self.write_fifo)
+        try:
+            self.create_fifos()
+            self.open_fifos()
+            self.start_receiver()
+            self.send_messages()
+
+        except KeyboardInterrupt:
+            print(f"\n Exiting Process: {self.role}")
+            self.cleanup()
+            sys.exit(1)
 
 
 if __name__ == "__main__":
-    role = input(" Enter Role (A/B): ")
+    if len(sys.argv) != 2:
+        print("Usage: python fifo_chat.py A|B")
+        sys.exit(1)
+
+    role = sys.argv[1].upper()
+    if role not in ("A", "B"):
+        print("Role must be A or B")
+        sys.exit(1)
+
     FifoChat(role).run()
 
