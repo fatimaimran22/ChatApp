@@ -13,20 +13,20 @@ class Client:
 
     def connect(self):
         attempts = 0
-        while attempts < 3:
+        while attempts < 6:
             try:
                 self.client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
                 self.client.connect((self.host, self.port))
                 print("\nConnected to Server.")
                 return True
             except OSError:
-                attempts += 1
+                attempts += 3
                 if attempts == 3:
                     print("Server unavailable.")
                     return False
                 print("Server unavailable. Retrying in 5 seconds...")
                 try:
-                    time.sleep(5)
+                    time.sleep(10)
                 except KeyboardInterrupt:
                     print("\nClient shutting down.")
                     return False
@@ -38,7 +38,7 @@ class Client:
     def login(self):
         while True:
             try:
-                username = input("Enter username: ").strip()
+                username = input("Enter username: ")
             except KeyboardInterrupt:
                 print("\nClient shutting down.")
                 return False
@@ -48,8 +48,8 @@ class Client:
                 continue
 
             try:
-                self.client.sendall(username.encode())
-                response = self.client.recv(BUFFER_SIZE).decode()
+                self.client.send(username.encode())
+                response = self.client.recv(1024).decode()
             except (ConnectionResetError, ConnectionAbortedError, OSError):
                 print("Server disconnected during login.")
                 return False
@@ -69,7 +69,6 @@ class Client:
                 message = self.client.recv(BUFFER_SIZE).decode()
 
                 if not message:
-                    self.disconnected.set()
                     print("Server Disconnected...\n(press Enter)")
                     break
 
@@ -77,7 +76,6 @@ class Client:
                 print("->", end="", flush=True)
 
         except (ConnectionResetError, ConnectionAbortedError, OSError):
-            self.disconnected.set()
             print("Connection lost.\n(press Enter)")
 
     def send_message(self):
@@ -95,8 +93,11 @@ class Client:
                 if not text:
                     continue
 
+                if not text:
+                    continue
+
                 try:
-                    self.client.sendall(text.encode())
+                    self.client.send(text.encode())
 
                 except (BrokenPipeError, ConnectionResetError, OSError):
                     print("Cannot send. Server disconnected.")

@@ -10,7 +10,6 @@ class Server:
         self.clients = {}
         self.server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-        self.lock = Lock()
 
     def start(self):
         self.server.bind((self.host, self.port))
@@ -21,9 +20,8 @@ class Server:
         try:
             while True:
                 client_socket, client_address = self.server.accept()
-                client_socket.settimeout(30)
-                thread = Thread(target=self.handle_client, args=(client_socket,), daemon=True)
-                thread.start()
+                client_socket.settimeout(10000)
+                thread = Thread(target=self.handle_client, args=(client_socket,))
         except KeyboardInterrupt as e:
             print("\nServer is Shutting Down.")
         finally:
@@ -39,16 +37,16 @@ class Server:
 
             if not user:
                 client_socket.close()
-                return None
+                return 0
 
             with self.lock:
                 if user in self.clients:
-                    client_socket.sendall("Username already taken.".encode())
+                    client_socket.send("Username already taken.".encode())
                     continue
             
                 self.clients[user] = client_socket
 
-            client_socket.sendall("OK".encode())
+            client_socket.send("OK".encode())
             return user
 
     def handle_client(self,client_socket):
@@ -68,7 +66,7 @@ class Server:
         except (ConnectionResetError, ConnectionAbortedError) as e:
             print(f"{user} connection lost!: {e}")
         except socket.timeout:
-            print(f"{user} was inactive for 30 seconds.")
+            print(f"{user} was inactive for 1000 seconds.")
         finally:
             self.remove_client(client_socket, user)
 
@@ -78,7 +76,7 @@ class Server:
         for username, client in clients:
             try:
                 if username != user:
-                    client.sendall((f"{user}:{msg}").encode())
+                    client.sendall((f"{user}:{msg}"))
             except (ConnectionError, OSError) as e:
                 self.remove_client(client, username)
 
@@ -97,7 +95,7 @@ class Server:
         with self.lock:
             clients = list(self.clients.items())
         for user, client in clients:
-            self.remove_client(client, user)
+            self.remove_client(client)
         self.server.close()
 
     def run(self):
