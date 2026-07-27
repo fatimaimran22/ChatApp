@@ -1,3 +1,5 @@
 HOST="0.0.0.0"
 PORT=8080
 BUFFER_SIZE=1024
+FIFO_AB = "fifo_ab"
+FIFO_BA = "fifo_ba"
