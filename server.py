@@ -9,7 +9,7 @@ class Server:
         self.port = PORT
         self.clients = {}
         self.server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        self.server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 2)
 
     def start(self):
         self.server.bind((self.host, self.port))
