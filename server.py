@@ -52,7 +52,6 @@ class Server:
         if not user:
             return
         print(f"*{user} has joined the chat*")
-        self.broadcast(user,f" joined the chat")
 
         try:
             while True:

@@ -29,7 +29,7 @@ class Client:
                     time.sleep(10)
                 except KeyboardInterrupt:
                     print("\nClient shutting down.")
-                    return False
+                    return True
             except KeyboardInterrupt:
                 print("\nClient shutting down.")
                 return False
