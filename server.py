@@ -68,7 +68,7 @@ class Server:
         except socket.timeout:
             print(f"{user} was inactive for 1000 seconds.")
         finally:
-            self.remove_client(client_socket, user)
+            self.remove_client(client_socket, message)
 
     def broadcast(self, user, msg):
         with self.lock:
