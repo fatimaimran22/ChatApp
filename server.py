@@ -31,7 +31,7 @@ class Server:
         while True:
             try:
                 user = client_socket.recv(BUFFER_SIZE).decode().strip()
-            except (socket.timeout, ConnectionResetError, ConnectionAbortedError, OSError):
+            except (socket.timeout, ConnectionAbortedError, ConnectionAbortedError, OSError):
                 client_socket.close()
                 return None
 
