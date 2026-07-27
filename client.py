@@ -69,6 +69,7 @@ class Client:
                 message = self.client.recv(BUFFER_SIZE).decode()
 
                 if not message:
+                    self.disconnected.set()
                     print("Server Disconnected...\n(press Enter)")
                     break
 
@@ -89,9 +90,6 @@ class Client:
 
                 if self.disconnected.is_set():
                     break
-
-                if not text:
-                    continue
 
                 if not text:
                     continue

@@ -7,6 +7,7 @@ class Server:
     def __init__(self):
         self.host = HOST
         self.port = PORT
+        self.lock = Lock()
         self.clients = {}
         self.server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 2)
@@ -21,7 +22,8 @@ class Server:
             while True:
                 client_socket, client_address = self.server.accept()
                 client_socket.settimeout(10000)
-                thread = Thread(target=self.handle_client)
+                thread = Thread(target=self.handle_client, args=(client_socket,), daemon=True)
+                thread.start()
         except KeyboardInterrupt as e:
             print("\nServer is Shutting Down.")
         finally:
@@ -52,6 +54,7 @@ class Server:
         if not user:
             return
         print(f"*{user} has joined the chat*")
+        self.broadcast(user, "joined the chat")
 
         try:
             while True:
@@ -59,30 +62,33 @@ class Server:
                 if not message:
                     break
                 self.broadcast(user,message)
+                print(f"{user}:{message}")
         except (ConnectionResetError, ConnectionAbortedError) as e:
             print(f"{user} connection lost!: {e}")
         except socket.timeout:
             print(f"{user} was inactive for 1000 seconds.")
         finally:
-            self.remove_client(client_socket, message)
+            self.remove_client(client_socket, user)
 
     def broadcast(self, user, msg):
         with self.lock:
             clients = list(self.clients.items())
-        for username, client in clients:
-            try:
-                if username != user:
-                    client.sendall((f"{user}:{msg}"))
-            except (ConnectionError, OSError) as e:
-                self.remove_client(client, username)
+            for username, client in clients:
+                try:
+                    if username != user:
+                        client.sendall((f"{user}:{msg}").encode())
+                except (ConnectionError, OSError) as e:
+                    self.remove_client(client, username)
 
     def remove_client(self, client_socket, user):
+        print("Entereddd-------")
         with self.lock:
             existed = self.clients.pop(user, None)
+            print(user)
 
         if existed is not None:
             print(f"*{user} has left the chat*")
-            self.broadcast(user,f" left the chat")
+            self.broadcast(user," left the chat")
 
         client_socket.close()
 
@@ -91,7 +97,7 @@ class Server:
         with self.lock:
             clients = list(self.clients.items())
         for user, client in clients:
-            self.remove_client(client)
+            self.remove_client(client, user)
         self.server.close()
 
     def run(self):
