@@ -21,7 +21,7 @@ class Server:
             while True:
                 client_socket, client_address = self.server.accept()
                 client_socket.settimeout(10000)
-                thread = Thread(target=self.handle_client, args=(client_socket,))
+                thread = Thread(target=self.handle_client)
         except KeyboardInterrupt as e:
             print("\nServer is Shutting Down.")
         finally:
@@ -61,7 +61,6 @@ class Server:
                 message = (client_socket.recv(BUFFER_SIZE)).decode()
                 if not message:
                     break
-                print(f"{user}:{message}")
                 self.broadcast(user,message)
         except (ConnectionResetError, ConnectionAbortedError) as e:
             print(f"{user} connection lost!: {e}")
