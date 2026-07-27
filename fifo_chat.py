@@ -19,39 +19,34 @@ class FifoChat:
         if not os.path.exists(FIFO_BA):
             os.mkfifo(FIFO_BA)
 
-        if self.role == 'A':
-            self.read_fifo = FIFO_BA
-            self.write_fifo = FIFO_AB
-        elif self.role == 'B':
-            self.read_fifo = FIFO_AB
-            self.write_fifo = FIFO_BA
-        else:
-            raise ValueError("Role must be A or B")
+        fifo_map = {
+            "A": (FIFO_BA, FIFO_AB),
+            "B": (FIFO_AB, FIFO_BA),
+        }
 
-    def open_fifos(self):
-        if self.role == 'A':
-            self.writer = open(self.write_fifo, "w")
-            self.reader = open(self.read_fifo, "r")
-        else:
-            self.reader = open(self.read_fifo, "r")
-            self.writer = open(self.write_fifo, "w")
+        self.read_fifo, self.write_fifo = fifo_map[self.role]
 
     def receive_messages(self):
-        try:
-            while True:
-                message = self.reader.readline()
+        while True:
+            message = self.reader.readline()
 
-                if not message:
-                    print("Other User Disconnected.")
-                    break
+            if not message:
+                print("Other User Disconnected.")
+                break
 
-                print(message, end="")
-                print("->", end="", flush=True)
+            print(message, end="")
+            print("->", end="", flush=True)
                 
-        except Exception as e:
-            print(e)
 
-    def send_messages(self):    #main thread
+    def open_fifo(self):
+            if self.role == 'A':
+                self.writer = open(self.write_fifo, "w")
+                self.reader = open(self.read_fifo, "r")
+            else:
+                self.reader = open(self.read_fifo, "r")
+                self.writer = open(self.write_fifo, "w")
+
+    def send_messages(self): 
         try:
             while True:
                 message = input("->")
@@ -74,7 +69,7 @@ class FifoChat:
     def run(self):
         print(f"-------User: {self.role}---------")
         self.create_fifos()
-        self.open_fifos()
+        self.open_fifo()
         self.start_receiver()
         self.send_messages()
 
