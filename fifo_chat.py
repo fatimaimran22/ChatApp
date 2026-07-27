@@ -2,7 +2,6 @@ import os
 from threading import Thread
 import sys
 from config import FIFO_AB, FIFO_BA
-import time
 
 class FifoChat:
     def __init__(self, role):
@@ -52,7 +51,7 @@ class FifoChat:
         except Exception as e:
             print(e)
 
-    def send_messages(self):
+    def send_messages(self):    #main thread
         try:
             while True:
                 message = input("->")
@@ -61,12 +60,9 @@ class FifoChat:
         except KeyboardInterrupt:
             print(f"\n Exiting Process: {self.role}")
             self.cleanup()
-            sys.exit(0)
-
-
+            return
+        
     def cleanup(self):
-        if self.reader:
-            self.reader.close()
         if self.writer:
             self.writer.close()
 
@@ -76,16 +72,11 @@ class FifoChat:
     
 
     def run(self):
-        try:
-            self.create_fifos()
-            self.open_fifos()
-            self.start_receiver()
-            self.send_messages()
-
-        except KeyboardInterrupt:
-            print(f"\n Exiting Process: {self.role}")
-            self.cleanup()
-            sys.exit(1)
+        print(f"-------User: {self.role}---------")
+        self.create_fifos()
+        self.open_fifos()
+        self.start_receiver()
+        self.send_messages()
 
 
 if __name__ == "__main__":
